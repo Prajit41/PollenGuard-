@@ -1,28 +1,12 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const timerElement = document.getElementById('timer');
     const skipButton = document.getElementById('skipButton');
     const loadingContainer = document.querySelector('.loading-container');
-    let countdown = 5; // Reduced from 15 to 5 seconds
-    let countdownInterval;
-
-    // Start the countdown
-    function startCountdown() {
-        updateTimerDisplay();
-        countdownInterval = setInterval(() => {
-            countdown--;
-            updateTimerDisplay();
-            
-            if (countdown <= 0) {
-                clearInterval(countdownInterval);
-                redirectToApp();
-            }
-        }, 1000);
-    }
-
-    // Update the timer display
-    function updateTimerDisplay() {
-        timerElement.textContent = countdown;
-    }
+    let appReady = false;
+    let userRequestedSkip = false;
+    
+    // Hide the countdown timer since we're not using it anymore
+    const timerElement = document.getElementById('timer');
+    if (timerElement) timerElement.style.display = 'none';
 
     // Redirect to the main app
     function redirectToApp() {
@@ -38,34 +22,66 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Skip button event listener
     skipButton.addEventListener('click', () => {
-        clearInterval(countdownInterval);
-        redirectToApp();
+        userRequestedSkip = true;
+        if (appReady) {
+            redirectToApp();
+        } else {
+            skipButton.textContent = 'Loading...';
+            skipButton.disabled = true;
+        }
     });
 
-    // Start the countdown when the page loads
-    startCountdown();
+    // Function to preload resources
+    function preloadResources() {
+        const resources = [
+            { href: 'index.html', as: 'document' },
+            { href: 'css/style.css', as: 'style' },
+            { href: 'js/script.js', as: 'script' },
+            { href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap', as: 'style' },
+            { href: 'https://fonts.gstatic.com', rel: 'preconnect', crossOrigin: true },
+            { href: 'https://api.openweathermap.org', rel: 'preconnect' }
+        ];
 
-    // Preload critical resources immediately
-    const resources = [
-      { href: 'index.html', as: 'document' },
-      { href: 'css/style.css', as: 'style' },
-      { href: 'js/script.js', as: 'script' },
-      { href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap', as: 'style' },
-      { href: 'https://fonts.gstatic.com', rel: 'preconnect', crossOrigin: true },
-      { href: 'https://api.openweathermap.org', rel: 'preconnect' }
-    ];
+        resources.forEach(resource => {
+            const link = document.createElement('link');
+            if (resource.rel) link.rel = resource.rel;
+            if (resource.as) link.as = resource.as;
+            if (resource.crossOrigin) link.crossOrigin = resource.crossOrigin;
+            link.href = resource.href;
+            document.head.appendChild(link);
+        });
+    }
 
-    resources.forEach(resource => {
-      const link = document.createElement('link');
-      if (resource.rel) link.rel = resource.rel;
-      if (resource.as) link.as = resource.as;
-      if (resource.crossOrigin) link.crossOrigin = resource.crossOrigin;
-      link.href = resource.href;
-      document.head.appendChild(link);
+    // Function to handle when the app is ready
+    function appIsReady() {
+        appReady = true;
+        if (userRequestedSkip) {
+            redirectToApp();
+        } else {
+            skipButton.textContent = 'Enter App';
+            skipButton.disabled = false;
+        }
+    }
+
+    // Start preloading resources
+    preloadResources();
+    
+    // Set a timeout to ensure the main page loads within 5 seconds
+    const mainAppLoader = new Promise((resolve) => {
+        // This will be resolved when the main app signals it's ready
+        window.appReady = resolve;
     });
-
-    // Start loading the main app immediately
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', 'index.html', true);
-    xhr.send();
+    
+    Promise.race([
+        mainAppLoader,
+        new Promise(resolve => setTimeout(resolve, 5000)) // Max 5 second wait
+    ]).then(() => {
+        appIsReady();
+    });
+    
+    // Start loading the main app in an iframe to warm it up
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = 'index.html';
+    document.body.appendChild(iframe);
 });

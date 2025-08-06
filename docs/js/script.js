@@ -72,27 +72,36 @@ class AdvancedAllergyForecastApp {
   // Load essential data that should be available right away
   async loadEssentialData() {
     try {
-      // Get location with timeout
-      const position = await Promise.race([
-        this.getCurrentPosition(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Location timeout')), 3000)
-        )
-      ]);
+      // Try to get cached location first
+      const cachedLocation = localStorage.getItem('lastLocation');
+      if (cachedLocation) {
+        const { latitude, longitude } = JSON.parse(cachedLocation);
+        this.currentLocation = { latitude, longitude };
+      }
       
-      this.currentLocation = { 
-        latitude: position.coords.latitude, 
-        longitude: position.coords.longitude 
-      };
+      // Get fresh location in background
+      this.getCurrentPosition()
+        .then(position => {
+          this.currentLocation = { 
+            latitude: position.coords.latitude, 
+            longitude: position.coords.longitude 
+          };
+          // Cache the location for next time
+          localStorage.setItem('lastLocation', JSON.stringify(this.currentLocation));
+        })
+        .catch(console.error);
       
-      // Fetch data in parallel without awaiting
-      this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude)
-        .then(() => this.updateUIWithData())
-        .catch(console.error);
-        
-      this.fetchPollenData(this.currentLocation.latitude, this.currentLocation.longitude)
-        .then(() => this.updateUIWithData())
-        .catch(console.error);
+      // If we have a location (cached or fresh), fetch data
+      if (this.currentLocation.latitude) {
+        // Fetch data in parallel without awaiting
+        this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude)
+          .then(() => this.updateUIWithData())
+          .catch(console.error);
+          
+        this.fetchPollenData(this.currentLocation.latitude, this.currentLocation.longitude)
+          .then(() => this.updateUIWithData())
+          .catch(console.error);
+      }
         
     } catch (error) {
       console.log('Background data refresh failed, continuing with demo data', error);
@@ -2099,5 +2108,10 @@ class AdvancedAllergyForecastApp {
 
 // Initialize the advanced app when the page loads
 document.addEventListener("DOMContentLoaded", () => {
-  new AdvancedAllergyForecastApp()
+  const app = new AdvancedAllergyForecastApp();
+  
+  // Signal to the landing page that we're ready
+  if (window.parent !== window && window.parent.window.appReady) {
+    window.parent.window.appReady();
+  }
 })
