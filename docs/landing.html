@@ -11,12 +11,45 @@
 </head>
 <body>
     <div class="ebook-container">
-        <!-- Navigation -->
-        <nav class="ebook-nav">
-            <button id="prevBtn" class="nav-btn" disabled>← Previous</button>
-            <span id="pageIndicator">1/5</span>
-            <button id="nextBtn" class="nav-btn">Next →</button>
-        </nav>
+        <!-- Modal for Personalized Forecast -->
+        <div id="forecastModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Your Personalized Forecast</h2>
+                <div id="forecastData" class="forecast-data">
+                    <div class="loading-indicator">
+                        <div class="loading-progress">
+                            <div class="loading-progress-bar" id="progressBar"></div>
+                        </div>
+                        <div class="loading-steps" id="loadingSteps">
+                            <div class="loading-step" id="step1">
+                                <span class="step-icon">⏳</span>
+                                <span class="step-text">Initializing forecast...</span>
+                            </div>
+                            <div class="loading-step" id="step2">
+                                <span class="step-icon">📍</span>
+                                <span class="step-text">Detecting your location</span>
+                            </div>
+                            <div class="loading-step" id="step3">
+                                <span class="step-icon">🌤️</span>
+                                <span class="step-text">Fetching weather data</span>
+                            </div>
+                            <div class="loading-step" id="step4">
+                                <span class="step-icon">📊</span>
+                                <span class="step-text">Analyzing pollen levels</span>
+                            </div>
+                        </div>
+                        <div class="loading-time" id="loadingTime">Estimated time remaining: <span id="timeRemaining">10</span>s</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Forecast Toggle Button -->
+        <button id="forecastToggle" class="forecast-toggle">
+            <span>Personalized Forecast</span>
+            <span class="toggle-icon">▼</span>
+        </button>
 
         <!-- Page 1: Cover -->
         <section class="ebook-page active" data-page="1">

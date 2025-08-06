@@ -69,16 +69,39 @@ class AdvancedAllergyForecastApp {
   // Load essential data that should be available right away
   async loadEssentialData() {
     try {
+      // Show loading state
+      this.showLoadingState('Loading your local forecast...');
+      
       // Set a timeout for the entire operation
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Data loading timed out')), 4500)
+        setTimeout(() => reject(new Error('Data loading timed out')), 10000) // Increased timeout to 10s
       );
 
-      // Get current position first - this is critical
-      const position = await Promise.race([
-        this.getCurrentPosition(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Geolocation timeout')), 2000))
-      ]);
+      // Try to get cached location first
+      const cachedLocation = localStorage.getItem('lastLocation');
+      let position;
+      
+      if (cachedLocation) {
+        const { latitude, longitude, timestamp } = JSON.parse(cachedLocation);
+        const isLocationFresh = Date.now() - timestamp < 30 * 60 * 1000; // 30 minutes
+        
+        if (isLocationFresh) {
+          // Use cached location if fresh
+          position = {
+            coords: { latitude, longitude }
+          };
+          console.log('Using cached location');
+        }
+      }
+      
+      // If no cached location or it's stale, get new one
+      if (!position) {
+        this.showLoadingState('Detecting your location...');
+        position = await Promise.race([
+          this.getCurrentPosition(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Geolocation timeout')), 5000))
+        ]);
+      }
       
       this.currentLocation = { 
         latitude: position.coords.latitude, 
@@ -91,11 +114,42 @@ class AdvancedAllergyForecastApp {
         timestamp: Date.now()
       }));
       
+      // Try to load cached data first for instant display
+      const cachedWeather = localStorage.getItem('cachedWeather');
+      const cachedPollen = localStorage.getItem('cachedPollen');
+      
+      if (cachedWeather) {
+        const { data, timestamp } = JSON.parse(cachedWeather);
+        const isFresh = Date.now() - timestamp < 60 * 1000; // 1 minute
+        if (isFresh) {
+          this.currentWeatherData = data;
+          this.updateUIWithData();
+        }
+      }
+      
+      if (cachedPollen) {
+        const { data, timestamp } = JSON.parse(cachedPollen);
+        const isFresh = Date.now() - timestamp < 60 * 1000; // 1 minute
+        if (isFresh) {
+          this.currentPollenData = data;
+          this.updateUIWithData();
+        }
+      }
+      
       // Fetch fresh data in parallel
+      this.showLoadingState('Fetching latest forecast data...');
       const [weatherData, pollenData] = await Promise.race([
         Promise.all([
-          this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude, false),
+          this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude, false)
+            .catch(err => {
+              console.error('Weather fetch error:', err);
+              return this.currentWeatherData || this.getDemoWeatherData();
+            }),
           this.fetchPollenData(this.currentLocation.latitude, this.currentLocation.longitude, false)
+            .catch(err => {
+              console.error('Pollen fetch error:', err);
+              return this.currentPollenData || this.generateSimulated7DayForecast();
+            })
         ]),
         timeoutPromise
       ]);
@@ -210,15 +264,66 @@ class AdvancedAllergyForecastApp {
   
   // Show loading state with message
   showLoadingState(message = 'Loading...') {
-    const mainContent = document.getElementById('main-content');
-    if (mainContent) {
-      // Only update if we don't already have a loading state
-      if (!mainContent.querySelector('.loading-state')) {
-        mainContent.innerHTML = `
-          <div class="loading-state">
-            <h2>Welcome to PollenGuard+</h2>
-            <p>${message}</p>
-            <div class="loading-animation">
+    const loadingElement = document.getElementById('loadingState') || this.createLoadingElement();
+    if (loadingElement) {
+      loadingElement.innerHTML = `
+        <div class="loading-content">
+          <h2>Welcome to PollenGuard+</h2>
+          <p>${message}</p>
+          <div class="loading-animation">
+            <div class="spinner"></div>
+          </div>
+        </div>
+      `;
+      loadingElement.style.display = 'block';
+    }
+    console.log('Loading:', message);
+  }
+  
+  // Create loading element if it doesn't exist
+  createLoadingElement() {
+    const loadingElement = document.createElement('div');
+    loadingElement.id = 'loadingState';
+    loadingElement.style.position = 'fixed';
+    loadingElement.style.top = '0';
+    loadingElement.style.left = '0';
+    loadingElement.style.width = '100%';
+    loadingElement.style.height = '100%';
+    loadingElement.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+    loadingElement.style.display = 'flex';
+    loadingElement.style.justifyContent = 'center';
+    loadingElement.style.alignItems = 'center';
+    loadingElement.style.zIndex = '1000';
+    loadingElement.style.textAlign = 'center';
+    loadingElement.style.padding = '20px';
+    loadingElement.style.boxSizing = 'border-box';
+    
+    // Add some basic styling for the spinner
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border-left-color: #09f;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
+      .loading-content {
+        max-width: 400px;
+        margin: 0 auto;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(loadingElement);
+    return loadingElement;
+  }
               <div class="spinner"></div>
             </div>
           </div>
