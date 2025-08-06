@@ -50,23 +50,58 @@ class AdvancedAllergyForecastApp {
   init() {
     this.initializeUI();
     this.setupEventListeners();
-    // Don't load data automatically, wait for user interaction
-    this.showLoadingState();
+    
+    // Show loading state while we fetch essential data
+    this.showLoadingState('Loading essential data...');
+    
+    // Start loading essential data immediately
+    this.loadEssentialData();
   }
   
-  // Show loading state with instructions
-  showLoadingState() {
+  // Load essential data that should be available right away
+  async loadEssentialData() {
+    try {
+      // First get the user's location
+      const position = await this.getCurrentPosition();
+      this.currentLocation = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      };
+      
+      // Then fetch basic weather data
+      await this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude);
+      
+      // Update UI with the loaded data
+      this.updateUIWithData();
+      
+    } catch (error) {
+      console.error('Error loading essential data:', error);
+      // If there's an error, show the tab structure but with a message
+      this.showContent();
+      this.showError('Failed to load essential data. Please try refreshing the page or check your connection.');
+    }
+  }
+  
+  // Show loading state with message
+  showLoadingState(message = 'Loading...') {
     const mainContent = document.getElementById('main-content');
     if (mainContent) {
-      mainContent.innerHTML = `
-        <div class="loading-state">
-          <h2>Welcome to PollenGuard+</h2>
-          <p>Click on any tab to load the data</p>
-          <div class="loading-animation">
-            <div class="spinner"></div>
+      // Only update if we don't already have a loading state
+      if (!mainContent.querySelector('.loading-state')) {
+        mainContent.innerHTML = `
+          <div class="loading-state">
+            <h2>Welcome to PollenGuard+</h2>
+            <p>${message}</p>
+            <div class="loading-animation">
+              <div class="spinner"></div>
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      } else {
+        // Just update the message if loading state already exists
+        const messageEl = mainContent.querySelector('.loading-state p');
+        if (messageEl) messageEl.textContent = message;
+      }
     }
   }
 
@@ -152,31 +187,55 @@ class AdvancedAllergyForecastApp {
     // Tab click handlers
     document.querySelectorAll('.nav-tab').forEach(tab => {
       tab.addEventListener('click', (e) => {
+        e.preventDefault();
+        const tabName = tab.dataset.tab;
+        
+        // Update active tab
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
         if (!this.currentLocation.latitude) {
           // If we don't have location yet, fetch it first
+          this.showLoadingState('Getting your location...');
           this.fetchLocationAndAllData();
         } else {
-          // Otherwise, just update the UI for the selected tab
-          this.updateUIForTab(tab.dataset.tab);
+          // Otherwise, update the UI for the selected tab
+          this.updateUIForTab(tabName);
         }
       });
     });
     
-    // Existing event listeners...
+    // Initial tab activation if in URL hash
+    const initialTab = window.location.hash ? window.location.hash.substring(1) : 'overview';
+    const tabElement = document.querySelector(`.nav-tab[data-tab="${initialTab}"]`);
+    if (tabElement) {
+      tabElement.click();
+    } else {
+      // Default to overview tab if no valid hash
+      document.querySelector('.nav-tab[data-tab="overview"]')?.classList.add('active');
+    }
+    
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', () => {
+      const tabName = window.location.hash ? window.location.hash.substring(1) : 'overview';
+      const tabElement = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
+      if (tabElement) {
+        tabElement.click();
+      }
+    });
   }
   
   // Update UI based on selected tab
   updateUIForTab(tabName) {
-    // Show loading state
-    const mainContent = document.getElementById('main-content');
-    if (mainContent) {
-      mainContent.innerHTML = `
-        <div class="loading-state">
-          <div class="spinner"></div>
-          <p>Loading ${tabName} data...</p>
-        </div>
-      `;
+    // If we already have the tab content, just show it
+    const tabContent = document.getElementById(`tab-${tabName}`);
+    if (tabContent && !tabContent.classList.contains('needs-update')) {
+      this.showTabContent(tabName);
+      return;
     }
+    
+    // Otherwise show loading state
+    this.showLoadingState(`Loading ${tabName} data...`);
     
     // Load data for the selected tab
     switch(tabName) {
