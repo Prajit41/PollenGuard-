@@ -5,65 +5,606 @@ class AdvancedAllergyForecastApp {
     this.forecastData = [];
     this.selectedDay = 0;
     this.chart = null;
-    this.currentLocation = {}; // Store location data
-    this.currentWeatherData = {}; // Store current weather data
-    this.currentRiskData = {}; // Store current risk data
-    this.aiSummaryText = ""; // Store AI summary text
+    this.currentLocation = {};
+    this.currentWeatherData = {};
+    this.currentRiskData = {};
+    this.aiSummaryText = "";
     this.medicationReminderTime = null;
     this.reminderInterval = null;
     this.alerts = [];
-    this.cache = new Map(); // Simple in-memory cache
+    this.cache = new Map();
     this.CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes cache expiry
 
-    // Define chart colors to match new palette
+    // Chart colors
     this.chartColors = {
-      tree: "#8B4513", // Brownish for tree
-      grass: "#32CD32", // Green for grass
-      weed: "#DAA520", // Yellowish for weed
+      tree: "#8B4513",
+      grass: "#32CD32",
+      weed: "#DAA520"
     };
 
-    // Health tips based on pollen levels
+    // Health tips
     this.healthTips = {
       high: [
         "Consider staying indoors with windows closed",
         "Wear sunglasses to protect your eyes",
-        "Shower after being outside to remove pollen",
-        "Use air purifiers with HEPA filters",
-        "Take allergy medication as prescribed"
+        "Shower after being outside to remove pollen"
       ],
       medium: [
         "Keep windows closed during peak pollen hours",
-        "Wash your face and hands after being outside",
-        "Use saline nasal rinses to clear pollen",
-        "Change clothes after being outdoors"
+        "Wash your face and hands after being outside"
       ],
       low: [
         "Enjoy the outdoors but be aware of symptoms",
-        "Keep track of your allergy symptoms",
-        "Stay hydrated to help with allergies"
+        "Keep track of your allergy symptoms"
       ]
     };
 
-    // Initialize with cached data if available
-    this.loadFromCache();
+    // Initialize with demo data first for immediate display
+    this.useDemoData();
+    
+    // Then try to load real data
     this.init();
   }
+  
+  // Initialize the application
+  init() {
+    this.initializeUI();
+    this.setupEventListeners();
+    // Don't load data automatically, wait for user interaction
+    this.showLoadingState();
+  }
+  
+  // Show loading state with instructions
+  showLoadingState() {
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+      mainContent.innerHTML = `
+        <div class="loading-state">
+          <h2>Welcome to PollenGuard+</h2>
+          <p>Click on any tab to load the data</p>
+          <div class="loading-animation">
+            <div class="spinner"></div>
+          </div>
+        </div>
+      `;
+    }
+  }
 
-  async init() {
+  // Show demo data immediately while loading real data
+  useDemoData() {
+    console.log('Using demo data');
+    
+    // Generate demo forecast data
+    const demoForecast = [];
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date();
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      
+      const treePollen = Math.floor(Math.random() * 5) + 3;
+      const grassPollen = Math.floor(Math.random() * 3) + 1;
+      const weedPollen = Math.floor(Math.random() * 7) + 2;
+      const totalPollen = treePollen + grassPollen + weedPollen;
+      
+      demoForecast.push({
+        day: i === 0 ? 'Today' : days[date.getDay()],
+        dateString: date.toISOString().split('T')[0],
+        treePollen,
+        grassPollen,
+        weedPollen,
+        totalPollen,
+        temperature: `${Math.floor(18 + Math.random() * 10)}°C`,
+        condition: ['Sunny', 'Partly Cloudy', 'Cloudy', 'Light Rain'][Math.floor(Math.random() * 4)]
+      });
+    }
+    
+    // Create demo data object
+    const demoData = {
+      weather: {
+        temperature: `${Math.floor(20 + Math.random() * 8)}°C`,
+        humidity: `${Math.floor(40 + Math.random() * 40)}%`,
+        windSpeed: `${(Math.random() * 10).toFixed(1)} m/s`,
+        condition: 'Partly Cloudy',
+        city: 'Demo City',
+        country: 'Demo Country'
+      },
+      pollen: {
+        tree: 'Medium',
+        grass: 'Low',
+        weed: 'High',
+        treeValue: demoForecast[0].treePollen,
+        grassValue: demoForecast[0].grassPollen,
+        weedValue: demoForecast[0].weedPollen
+      },
+      risk: {
+        level: 'moderate',
+        factors: ['High weed pollen', 'Moderate wind speed'],
+        primaryTrigger: 'Weed Pollen',
+        healthTip: 'Consider staying indoors with windows closed',
+        riskClass: 'moderate-risk',
+        text: 'Moderate',
+        class: 'moderate'
+      },
+      forecast: demoForecast
+    };
+    
+    // Update UI with demo data
+    this.updateUIWithData(demoData);
+    
+    // Remove loading state
+    document.body.classList.remove('loading');
+    const loadingText = document.getElementById('loading-text');
+    if (loadingText) loadingText.textContent = '';
+    
+    console.log('Demo data loaded');
+  }
+  
+  // Initialize the application UI
+  initializeUI() {
+    // Set up any initial UI elements
+    document.body.classList.add('loading');
+  }
+  
+  // Set up event listeners
+  setupEventListeners() {
+    // Tab click handlers
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        if (!this.currentLocation.latitude) {
+          // If we don't have location yet, fetch it first
+          this.fetchLocationAndAllData();
+        } else {
+          // Otherwise, just update the UI for the selected tab
+          this.updateUIForTab(tab.dataset.tab);
+        }
+      });
+    });
+    
+    // Existing event listeners...
+  }
+  
+  // Update UI based on selected tab
+  updateUIForTab(tabName) {
+    // Show loading state
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+      mainContent.innerHTML = `
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading ${tabName} data...</p>
+        </div>
+      `;
+    }
+    
+    // Load data for the selected tab
+    switch(tabName) {
+      case 'forecast':
+        this.loadForecastData();
+        break;
+      case 'alerts':
+        this.loadAlertsData();
+        break;
+      // Add more cases for other tabs
+      default:
+        this.loadOverviewData();
+    }
+  }
+  
+  // Load data in the background
+  async loadDataInBackground() {
     try {
-      // Show main content immediately
-      const contentElement = document.getElementById('content');
-      if (contentElement) {
-        contentElement.classList.remove('hidden');
+      // Show loading state
+      const loadingText = document.getElementById('loading-text');
+      if (loadingText) loadingText.textContent = 'Loading forecast data...';
+      
+      // Try to load real data
+      await this.fetchLocationAndAllData();
+    } catch (error) {
+      console.error('Error loading data:', error);
+      // If there's an error, we already have demo data showing
+    } finally {
+      // Remove loading state
+      document.body.classList.remove('loading');
+      const loadingText = document.getElementById('loading-text');
+      if (loadingText) loadingText.textContent = '';
+    }
+  }
+  
+  // Fetch location and all data
+  async fetchLocationAndAllData() {
+    try {
+      const position = await this.getCurrentPosition();
+      this.currentLocation = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      };
+      
+      // Show loading state
+      const mainContent = document.getElementById('main-content');
+      if (mainContent) {
+        mainContent.innerHTML = `
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Fetching your local data...</p>
+          </div>
+        `;
       }
       
+      // Load initial data
+      await Promise.all([
+        this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude),
+        this.fetchPollenData(this.currentLocation.latitude, this.currentLocation.longitude)
+      ]);
+      
+      // Update UI with the loaded data
+      this.updateUIWithData();
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      // Show error state
+      const mainContent = document.getElementById('main-content');
+      if (mainContent) {
+        mainContent.innerHTML = `
+          <div class="error-state">
+            <h3>Error Loading Data</h3>
+            <p>${error.message || 'Failed to load data. Please try again later.'}</p>
+            <button id="retry-btn" class="btn btn-primary">Retry</button>
+          </div>
+        `;
+        
+        // Add retry button handler
+        document.getElementById('retry-btn')?.addEventListener('click', () => {
+          this.fetchLocationAndAllData();
+        });
+      }
+    }
+  }
+  
+  // Load data for overview tab
+  async loadOverviewData() {
+    if (!this.currentLocation.latitude) return;
+    
+    try {
+      // Load only basic weather data for overview
+      await this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude);
+      // Update UI with just the weather data
+      this.updateUIWithData();
+    } catch (error) {
+      console.error('Error loading overview data:', error);
+    }
+  }
+  
+  // Load data for forecast tab
+  async loadForecastData() {
+    if (!this.currentLocation.latitude) return;
+    
+    try {
+      // Load both weather and pollen data for forecast
+      await Promise.all([
+        this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude),
+        this.fetchPollenData(this.currentLocation.latitude, this.currentLocation.longitude)
+      ]);
+      // Update UI with all data
+      this.updateUIWithData();
+    } catch (error) {
+      console.error('Error loading forecast data:', error);
+    }
+  }
+  
+  // Load data for alerts tab
+  async loadAlertsData() {
+    if (!this.currentLocation.latitude) return;
+    
+    try {
+      // Load only the data needed for alerts
+      await this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude);
+      // Update UI with alerts data
+      this.updateUIWithData();
+    } catch (error) {
+      console.error('Error loading alerts data:', error);
+    }
+  }
+  
+  // Update UI with data
+  updateUIWithData(data) {
+    if (!data) return;
+    
+    // Update weather info
+    if (data.weather) {
+      const weatherEl = document.getElementById('weather-info');
+      if (weatherEl) {
+        weatherEl.innerHTML = `
+          <h2>${data.weather.city}, ${data.weather.country}</h2>
+          <div class="weather-temp">${data.weather.temperature}</div>
+          <div class="weather-desc">${data.weather.condition}</div>
+          <div class="weather-details">
+            <span>Humidity: ${data.weather.humidity}</span>
+            <span>Wind: ${data.weather.windSpeed}</span>
+          </div>
+        `;
+      }
+    }
+    
+    // Update pollen info
+    if (data.pollen) {
+      const pollenEl = document.getElementById('pollen-levels');
+      if (pollenEl) {
+        pollenEl.innerHTML = `
+          <h3>Pollen Levels</h3>
+          <div class="pollen-levels">
+            <div class="pollen-type">
+              <span class="pollen-name">Tree</span>
+              <span class="pollen-value ${data.pollen.tree.toLowerCase()}">${data.pollen.tree}</span>
+            </div>
+            <div class="pollen-type">
+              <span class="pollen-name">Grass</span>
+              <span class="pollen-value ${data.pollen.grass.toLowerCase()}">${data.pollen.grass}</span>
+            </div>
+            <div class="pollen-type">
+              <span class="pollen-name">Weed</span>
+              <span class="pollen-value ${data.pollen.weed.toLowerCase()}">${data.pollen.weed}</span>
+            </div>
+          </div>
+        `;
+      }
+    }
+    
+    // Update risk info
+    if (data.risk) {
+      const riskEl = document.getElementById('risk-level');
+      if (riskEl) {
+        riskEl.innerHTML = `
+          <h3>Allergy Risk: <span class="${data.risk.riskClass}">${data.risk.text}</span></h3>
+          <p>${data.risk.healthTip}</p>
+          <div class="risk-factors">
+            <h4>Key Factors:</h4>
+            <ul>
+              ${data.risk.factors.map(factor => `<li>${factor}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      }
+    }
+    
+    // Update forecast
+    if (data.forecast && data.forecast.length > 0) {
+      this.updateForecastUI(data.forecast);
+    }
+  }
+  
+  // Update forecast UI
+  updateForecastUI(forecast) {
+    const forecastEl = document.getElementById('forecast');
+    if (!forecastEl) return;
+    
+    forecastEl.innerHTML = `
+      <h3>7-Day Forecast</h3>
+      <div class="forecast-container">
+        ${forecast.map((day, index) => `
+          <div class="forecast-day">
+            <div class="day">${index === 0 ? 'Today' : day.day}</div>
+            <div class="temp">${day.temperature}</div>
+            <div class="condition">${day.condition}</div>
+            <div class="pollen">
+              <span class="pollen-type">🌳 ${day.treePollen}</span>
+              <span class="pollen-type">🌾 ${day.grassPollen}</span>
+              <span class="pollen-type">🌿 ${day.weedPollen}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  
+  // Get current position
+  getCurrentPosition() {
+    return new Promise((resolve, reject) => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(resolve, reject);
+      } else {
+        reject(new Error('Geolocation is not supported by this browser'));
+      }
+    });
+  }
+  
+  // Fetch weather data
+  async fetchWeatherData(lat, lon) {
+    try {
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${this.weatherApiKey}&units=metric`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch weather data');
+      }
+      
+      const data = await response.json();
+      
+      this.currentWeatherData = {
+        temperature: `${Math.round(data.main.temp)}°C`,
+        humidity: `${data.main.humidity}%`,
+        windSpeed: `${(data.wind.speed * 3.6).toFixed(1)} km/h`,
+        condition: data.weather[0].main,
+        city: data.name,
+        country: data.sys.country
+      };
+      
+      return this.currentWeatherData;
+    } catch (error) {
+      console.error('Error fetching weather data:', error);
+      throw error;
+    }
+  }
+  
+  // Fetch pollen data
+  async fetchPollenData(lat, lon) {
+    try {
+      // In a real app, you would fetch from your pollen API here
+      // For now, we'll just generate some sample data
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const treePollen = Math.floor(Math.random() * 10);
+      const grassPollen = Math.floor(Math.random() * 8);
+      const weedPollen = Math.floor(Math.random() * 12);
+      
+      this.currentPollenData = {
+        tree: this.getPollenLevel(treePollen),
+        grass: this.getPollenLevel(grassPollen),
+        weed: this.getPollenLevel(weedPollen),
+        treeValue: treePollen,
+        grassValue: grassPollen,
+        weedValue: weedPollen
+      };
+      
+      // Generate forecast data
+      this.forecastData = [];
+      const today = new Date();
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        
+        const tree = Math.max(0, Math.min(10, treePollen + Math.floor(Math.random() * 4) - 2));
+        const grass = Math.max(0, Math.min(8, grassPollen + Math.floor(Math.random() * 3) - 1));
+        const weed = Math.max(0, Math.min(12, weedPollen + Math.floor(Math.random() * 5) - 2));
+        
+        this.forecastData.push({
+          day: i === 0 ? 'Today' : days[date.getDay()],
+          dateString: date.toISOString().split('T')[0],
+          treePollen: tree,
+          grassPollen: grass,
+          weedPollen: weed,
+          totalPollen: tree + grass + weed,
+          temperature: `${Math.round(15 + Math.random() * 15)}°C`,
+          condition: ['Sunny', 'Partly Cloudy', 'Cloudy', 'Light Rain', 'Rain', 'Thunderstorm'][Math.floor(Math.random() * 6)]
+        });
+      }
+      
+      // Calculate risk level
+      const totalPollen = treePollen + grassPollen + weedPollen;
+      this.currentRiskData = this.calculateRiskLevel(totalPollen);
+      
+      return this.currentPollenData;
+      
+    } catch (error) {
+      console.error('Error fetching pollen data:', error);
+      throw error;
+    }
+  }
+  
+  // Get pollen level text based on value
+  getPollenLevel(value) {
+    if (value >= 8) return 'Very High';
+    if (value >= 6) return 'High';
+    if (value >= 4) return 'Moderate';
+    if (value >= 2) return 'Low';
+    return 'None';
+  }
+  
+  // Calculate risk level based on pollen count
+  calculateRiskLevel(totalPollen) {
+    if (totalPollen >= 20) {
+      return {
+        level: 'high',
+        text: 'High',
+        riskClass: 'high-risk',
+        healthTip: this.getRandomHealthTip('high'),
+        factors: ['Very high pollen count', 'Ideal weather for pollen dispersion']
+      };
+    } else if (totalPollen >= 10) {
+      return {
+        level: 'moderate',
+        text: 'Moderate',
+        riskClass: 'moderate-risk',
+        healthTip: this.getRandomHealthTip('medium'),
+        factors: ['Moderate pollen count', 'Moderate weather conditions']
+      };
+    } else {
+      return {
+        level: 'low',
+        text: 'Low',
+        riskClass: 'low-risk',
+        healthTip: this.getRandomHealthTip('low'),
+        factors: ['Low pollen count', 'Favorable conditions']
+      };
+    }
+  }
+  
+  // Get random health tip for the given level
+  getRandomHealthTip(level) {
+    const tips = this.healthTips[level] || [];
+    return tips[Math.floor(Math.random() * tips.length)] || 'No specific health tips available.';
+  }
+  
+  // Save data to cache
+  saveToCache() {
+    try {
+      const cacheData = {
+        location: this.currentLocation,
+        weather: this.currentWeatherData,
+        pollen: this.currentPollenData,
+        risk: this.currentRiskData,
+        forecast: this.forecastData,
+        timestamp: Date.now()
+      };
+      
+      localStorage.setItem('allergyAppCache', JSON.stringify(cacheData));
+    } catch (error) {
+      console.error('Error saving to cache:', error);
+    }
+  }
+  
+  // Load data from cache
+  loadFromCache() {
+    try {
+      const cached = localStorage.getItem('allergyAppCache');
+      if (!cached) return false;
+      
+      const { location, weather, pollen, risk, forecast, timestamp } = JSON.parse(cached);
+      const cacheAge = Date.now() - timestamp;
+      
+      // Use cached data if it's less than 1 hour old
+      if (cacheAge < 60 * 60 * 1000) {
+        this.currentLocation = location || {};
+        this.currentWeatherData = weather || {};
+        this.currentPollenData = pollen || {};
+        this.currentRiskData = risk || {};
+        this.forecastData = forecast || [];
+        
+        // Update UI with cached data
+        this.updateUIWithData({
+          weather: this.currentWeatherData,
+          pollen: this.currentPollenData,
+          risk: this.currentRiskData,
+          forecast: this.forecastData
+        });
+        
+        return true;
+      }
+    } catch (error) {
+      console.error('Error loading from cache:', error);
+    }
+    
+    return false;
+  }
+  
+  // Initialize the application
+  async init() {
+    try {
       // Initialize the UI
       this.initializeUI();
+      
+      // Set up event listeners
+      this.setupEventListeners();
       
       // Try to get location from browser first
       if (navigator.geolocation) {
         // Show loading indicator for location
-        document.getElementById('loading-text').textContent = 'Getting your location...';
+        const loadingText = document.getElementById('loading-text');
+        if (loadingText) loadingText.textContent = 'Getting your location...';
         
         // Try to get high-accuracy position quickly (up to 2 seconds)
         navigator.geolocation.getCurrentPosition(
@@ -272,38 +813,34 @@ class AdvancedAllergyForecastApp {
   
   initializeUI() {
     // Initialize any UI components that don't require data
-    const severityInput = document.getElementById('severity');
-    const severityValue = document.getElementById('severity-value');
+    this.setupEventListeners();
     
-    if (severityInput && severityValue) {
-      const severityTexts = ['Very Mild', 'Mild', 'Moderate', 'Severe', 'Very Severe'];
-      
-      const updateSeverityText = () => {
-        const value = parseInt(severityInput.value);
-        if (severityValue) {
-          severityValue.textContent = `${value} - ${severityTexts[value - 1]}`;
-        }
-      };
-      
-      severityInput.addEventListener('input', updateSeverityText);
-      updateSeverityText();
-    }
-      
-      console.log('Form initialization complete');
-      this.attachEventListeners();
-    } catch (error) {
-      console.error("Initialization error:", error);
-      this.showError("Failed to initialize: " + error.message);
-    }
+    // Show loading state immediately
+    document.getElementById('loading-text').textContent = 'Initializing...';
+    
+    // Add loading class to body
+    document.body.classList.add('loading');
   }
   
   async loadDataInBackground() {
     try {
-      // Load data in the background
-      await this.fetchLocationAndAllData();
+      // Show loading state immediately
+      const loadingText = document.getElementById('loading-text');
+      if (loadingText) loadingText.textContent = 'Loading forecast data...';
+      
+      // Show demo data immediately
+      this.useDemoData();
+      
+      // Then try to load real data in the background
+      try {
+        await this.fetchLocationAndAllData();
+      } catch (error) {
+        console.error('Error in fetchLocationAndAllData:', error);
+        // Keep showing demo data if API fails
+      }
     } catch (error) {
-      console.error("Error loading data:", error);
-      this.showError("Failed to load data. Please try again later.");
+      console.error("Error in loadDataInBackground:", error);
+      // We already showed demo data, so no need to show error
     }
   }
 
@@ -358,25 +895,6 @@ class AdvancedAllergyForecastApp {
     updateSeverityDisplay(parseInt(severitySlider.value));
   }
 
-  // Simple in-memory cache with expiry
-  setCache(key, data) {
-    this.cache.set(key, {
-      data,
-      expiry: Date.now() + this.CACHE_EXPIRY
-    });
-  }
-
-  getCache(key) {
-    const cached = this.cache.get(key);
-    if (!cached) return null;
-    
-    if (Date.now() > cached.expiry) {
-      this.cache.delete(key);
-      return null;
-    }
-    return cached.data;
-  }
-
   // Save important data to localStorage for persistence
   saveToCache() {
     try {
@@ -396,7 +914,7 @@ class AdvancedAllergyForecastApp {
   loadFromCache() {
     try {
       const cached = localStorage.getItem('allergyAppCache');
-      if (!cached) return;
+      if (!cached) return false;
       
       const { location, weather, forecast, timestamp } = JSON.parse(cached);
       const cacheAge = Date.now() - timestamp;
@@ -412,6 +930,197 @@ class AdvancedAllergyForecastApp {
       console.warn('Failed to load from cache', e);
     }
     return false;
+  }
+
+  // Show demo data immediately while loading real data
+  useDemoData() {
+    console.log('Using demo data');
+    
+    // Generate demo forecast data
+    const demoForecast = [];
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date();
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      
+      const treePollen = Math.floor(Math.random() * 5) + 3;
+      const grassPollen = Math.floor(Math.random() * 3) + 1;
+      const weedPollen = Math.floor(Math.random() * 7) + 2;
+      const totalPollen = treePollen + grassPollen + weedPollen;
+      
+      demoForecast.push({
+        day: i === 0 ? 'Today' : days[date.getDay()],
+        dateString: date.toISOString().split('T')[0],
+        treePollen,
+        grassPollen,
+        weedPollen,
+        totalPollen,
+        temperature: `${Math.floor(18 + Math.random() * 10)}°C`,
+        condition: ['Sunny', 'Partly Cloudy', 'Cloudy', 'Light Rain'][Math.floor(Math.random() * 4)]
+      });
+    }
+    
+    // Create demo data object
+    const demoData = {
+      weather: {
+        temperature: `${Math.floor(20 + Math.random() * 8)}°C`,
+        humidity: `${Math.floor(40 + Math.random() * 40)}%`,
+        windSpeed: `${(Math.random() * 10).toFixed(1)} m/s`,
+        condition: 'Partly Cloudy',
+        city: 'Demo City',
+        country: 'Demo Country'
+      },
+      pollen: {
+        tree: 'Medium',
+        grass: 'Low',
+        weed: 'High',
+        treeValue: demoForecast[0].treePollen,
+        grassValue: demoForecast[0].grassPollen,
+        weedValue: demoForecast[0].weedPollen
+      },
+      risk: {
+        level: 'moderate',
+        factors: ['High weed pollen', 'Moderate wind speed'],
+        primaryTrigger: 'Weed Pollen',
+        healthTip: 'Consider staying indoors with windows closed',
+        riskClass: 'moderate-risk',
+        text: 'Moderate',
+        class: 'moderate'
+      },
+      forecast: demoForecast
+    };
+    
+    // Update UI with demo data
+    this.updateUIWithData(demoData);
+    
+    // Remove loading state
+    document.body.classList.remove('loading');
+    const loadingText = document.getElementById('loading-text');
+    if (loadingText) loadingText.textContent = '';
+    
+    console.log('Demo data loaded');
+  }
+
+  async fetchWithTimeout(resource, options = {}) {
+    const { timeout = 5000, cacheKey } = options;
+    
+    // Check cache first if cacheKey is provided
+    if (cacheKey) {
+      const cached = this.getCache(cacheKey);
+      if (cached) return cached;
+    }
+    
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(resource, {
+        ...options,
+        signal: controller.signal  
+      });
+      
+      clearTimeout(id);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Cache the response if cacheKey is provided
+      if (cacheKey) {
+        this.setCache(cacheKey, data);
+      }
+      
+      return data;
+    } catch (error) {
+      clearTimeout(id);
+      
+      // Return cached data if available when offline
+      if (cacheKey) {
+        const cached = this.getCache(cacheKey);
+        if (cached) {
+          console.warn('Using cached data due to network error:', error);
+          return cached;
+        }
+      }
+      
+      console.error('Fetch error:', error);
+      throw error;
+    }
+  }
+
+  // Show demo data immediately while loading real data
+  useDemoData() {
+    console.log('Using demo data');
+    
+    // Generate demo forecast data
+    const demoForecast = [];
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date();
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      
+      const treePollen = Math.floor(Math.random() * 5) + 3;
+      const grassPollen = Math.floor(Math.random() * 3) + 1;
+      const weedPollen = Math.floor(Math.random() * 7) + 2;
+      const totalPollen = treePollen + grassPollen + weedPollen;
+      
+      demoForecast.push({
+        day: i === 0 ? 'Today' : days[date.getDay()],
+        dateString: date.toISOString().split('T')[0],
+        treePollen,
+        grassPollen,
+        weedPollen,
+        totalPollen,
+        temperature: `${Math.floor(18 + Math.random() * 10)}°C`,
+        condition: ['Sunny', 'Partly Cloudy', 'Cloudy', 'Light Rain'][Math.floor(Math.random() * 4)]
+      });
+    }
+    
+    // Create demo data object
+    const demoData = {
+      weather: {
+        temperature: `${Math.floor(20 + Math.random() * 8)}°C`,
+        humidity: `${Math.floor(40 + Math.random() * 40)}%`,
+        windSpeed: `${(Math.random() * 10).toFixed(1)} m/s`,
+        condition: 'Partly Cloudy',
+        city: 'Demo City',
+        country: 'Demo Country'
+      },
+      pollen: {
+        tree: 'Medium',
+        grass: 'Low',
+        weed: 'High',
+        treeValue: demoForecast[0].treePollen,
+        grassValue: demoForecast[0].grassPollen,
+        weedValue: demoForecast[0].weedPollen
+      },
+      risk: {
+        level: 'moderate',
+        factors: ['High weed pollen', 'Moderate wind speed'],
+        primaryTrigger: 'Weed Pollen',
+        healthTip: 'Consider staying indoors with windows closed',
+        riskClass: 'moderate-risk',
+        text: 'Moderate',
+        class: 'moderate'
+      },
+      forecast: demoForecast
+    };
+    
+    // Update UI with demo data
+    this.updateUIWithData(demoData);
+    
+    // Remove loading state
+    document.body.classList.remove('loading');
+    const loadingText = document.getElementById('loading-text');
+    if (loadingText) loadingText.textContent = '';
+    
+    console.log('Demo data loaded');
   }
 
   async fetchWithTimeout(resource, options = {}) {
@@ -491,8 +1200,17 @@ class AdvancedAllergyForecastApp {
 
   async fetchLocationAndAllData() {
     const startTime = performance.now();
+    const CACHE_KEY = 'weather_pollen_data';
     
     try {
+      // Try to load from cache first
+      const cachedData = this.getCachedData(CACHE_KEY);
+      if (cachedData) {
+        console.log('Using cached data');
+        this.updateUIWithData(cachedData);
+        return;
+      }
+      
       // Show loading state
       const alertsContainer = document.getElementById('alerts-container');
       alertsContainer.innerHTML = `
