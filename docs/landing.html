@@ -63,9 +63,11 @@
         <div class="loading-container">
             <div class="spinner"></div>
             <p>Preparing your personalized pollen forecast...</p>
-            <p>This may take a moment while we gather the latest data</p>
-            <button id="skipButton" class="skip-button">Skip to App</button>
-            <p class="hint">(The app will be ready in a few seconds)</p>
+            <p>Loading fresh weather and pollen data (this will take about 5 seconds)</p>
+            <div id="skipButtonContainer" style="opacity: 0; transition: opacity 0.5s ease;">
+                <button id="skipButton" class="skip-button">Enter App</button>
+                <p class="hint">Data loaded and ready!</p>
+            </div>
         </div>
     </div>
     

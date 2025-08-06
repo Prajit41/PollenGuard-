@@ -1,7 +1,10 @@
 class AdvancedAllergyForecastApp {
   constructor() {
+    // API Keys
     this.weatherApiKey = "bd78e54d0186477047d25911103391ab";
     this.pollenApiKey = "";
+    
+    // App State
     this.forecastData = [];
     this.selectedDay = 0;
     this.chart = null;
@@ -40,20 +43,9 @@ class AdvancedAllergyForecastApp {
       ]
     };
 
-      // Show UI immediately with demo data
-    this.initializeUI();
-    this.setupEventListeners();
-    this.useDemoData();
-    this.showContent();
-    
-    // Start loading real data in background
-    setTimeout(() => {
-      this.loadEssentialData().catch(console.error);
-    }, 0);
+    // Initialize the app
+    this.init();
   }
-  
-  // Demo mode flag - controls whether to use demo data as fallback
-  isDemoMode = true;
   
   // Initialize the application
   init() {
@@ -63,46 +55,143 @@ class AdvancedAllergyForecastApp {
     this.useDemoData();
     this.showContent();
     
-    // Start loading real data in background without blocking
-    setTimeout(() => {
-      this.loadEssentialData().catch(console.error);
-    }, 0);
+    // Start loading real data
+    this.loadEssentialData()
+      .then(() => {
+        // Signal to parent window (if in iframe) that we're ready
+        if (window.self !== window.top) {
+          window.parent.postMessage('APP_READY', '*');
+        }
+      })
+      .catch(console.error);
   }
   
   // Load essential data that should be available right away
   async loadEssentialData() {
     try {
-      // Try to get cached location first
-      const cachedLocation = localStorage.getItem('lastLocation');
+      // Set a timeout for the entire operation
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Data loading timed out')), 4500)
+      );
+
+      // Get current position first - this is critical
+      const position = await Promise.race([
+        this.getCurrentPosition(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Geolocation timeout')), 2000))
+      ]);
+      
+      this.currentLocation = { 
+        latitude: position.coords.latitude, 
+        longitude: position.coords.longitude 
+      };
+      
+      // Save location for next time
+      localStorage.setItem('lastLocation', JSON.stringify({
+        ...this.currentLocation,
+        timestamp: Date.now()
+      }));
+      
+      // Fetch fresh data in parallel
+      const [weatherData, pollenData] = await Promise.race([
+        Promise.all([
+          this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude, false),
+          this.fetchPollenData(this.currentLocation.latitude, this.currentLocation.longitude, false)
+        ]),
+        timeoutPromise
+      ]);
+      
+      // Update UI with fresh data
+      this.currentWeatherData = weatherData;
+      this.currentPollenData = pollenData;
+      this.updateUIWithData();
+      
+      // Cache the fresh data
+      localStorage.setItem('cachedWeather', JSON.stringify({
+        data: weatherData,
+        timestamp: Date.now()
+      }));
+      
+      localStorage.setItem('cachedPollen', JSON.stringify({
+        data: pollenData,
+        timestamp: Date.now()
+      }));
+      
+      // Use cached data if available and not expired (less than 30 minutes old)
       if (cachedLocation) {
-        const { latitude, longitude } = JSON.parse(cachedLocation);
-        this.currentLocation = { latitude, longitude };
-      }
-      
-      // Get fresh location in background
-      this.getCurrentPosition()
-        .then(position => {
-          this.currentLocation = { 
-            latitude: position.coords.latitude, 
-            longitude: position.coords.longitude 
-          };
-          // Cache the location for next time
-          localStorage.setItem('lastLocation', JSON.stringify(this.currentLocation));
-        })
-        .catch(console.error);
-      
-      // If we have a location (cached or fresh), fetch data
-      if (this.currentLocation.latitude) {
-        // Fetch data in parallel without awaiting
-        this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude)
-          .then(() => this.updateUIWithData())
-          .catch(console.error);
-          
-        this.fetchPollenData(this.currentLocation.latitude, this.currentLocation.longitude)
-          .then(() => this.updateUIWithData())
-          .catch(console.error);
-      }
+        const { latitude, longitude, timestamp } = JSON.parse(cachedLocation);
+        const isLocationFresh = Date.now() - timestamp < 30 * 60 * 1000; // 30 minutes
         
+        if (isLocationFresh) {
+          this.currentLocation = { latitude, longitude };
+          
+          // Load cached weather data if available
+          if (cachedWeather) {
+            const { data, timestamp } = JSON.parse(cachedWeather);
+            const isWeatherFresh = Date.now() - timestamp < 30 * 60 * 1000; // 30 minutes
+            if (isWeatherFresh) {
+              this.currentWeatherData = data;
+              this.updateUIWithData();
+            }
+          }
+          
+          // Load cached pollen data if available
+          if (cachedPollen) {
+            const { data, timestamp } = JSON.parse(cachedPollen);
+            const isPollenFresh = Date.now() - timestamp < 30 * 60 * 1000; // 30 minutes
+            if (isPollenFresh) {
+              this.currentPollenData = data;
+              this.updateUIWithData();
+            }
+          }
+        }
+      }
+      
+      // Start fresh data fetch in parallel
+      const fetchOperations = [
+        this.getCurrentPosition()
+          .then(position => {
+            this.currentLocation = { 
+              latitude: position.coords.latitude, 
+              longitude: position.coords.longitude 
+            };
+            // Cache the location with timestamp
+            localStorage.setItem('lastLocation', JSON.stringify({
+              ...this.currentLocation,
+              timestamp: Date.now()
+            }));
+            
+            // Fetch fresh data
+            return Promise.all([
+              this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude, false)
+                .then(data => {
+                  // Cache the fresh data
+                  localStorage.setItem('cachedWeather', JSON.stringify({
+                    data,
+                    timestamp: Date.now()
+                  }));
+                  return data;
+                }),
+                
+              this.fetchPollenData(this.currentLocation.latitude, this.currentLocation.longitude, false)
+                .then(data => {
+                  // Cache the fresh data
+                  localStorage.setItem('cachedPollen', JSON.stringify({
+                    data,
+                    timestamp: Date.now()
+                  }));
+                  return data;
+                })
+            ]);
+          })
+          .catch(console.error)
+      ];
+      
+      // Wait for either the operations to complete or the timeout
+      await Promise.race([
+        Promise.all(fetchOperations),
+        timeoutPromise
+      ]);
+      
     } catch (error) {
       console.log('Background data refresh failed, continuing with demo data', error);
       
@@ -545,7 +634,19 @@ class AdvancedAllergyForecastApp {
       const cached = this.getFromCache(cacheKey, cacheExpiry);
       if (cached) {
         this.currentWeatherData = cached.data;
+        this.updateUIWithData(); // Update UI immediately with cached data
         return cached.data;
+      }
+      
+      // Check localStorage for cached weather data
+      const cachedWeather = localStorage.getItem('cachedWeather');
+      if (cachedWeather) {
+        const { data, timestamp } = JSON.parse(cachedWeather);
+        if (Date.now() - timestamp < cacheExpiry) {
+          this.currentWeatherData = data;
+          this.updateUIWithData(); // Update UI immediately with cached data
+          return data;
+        }
       }
     }
     
