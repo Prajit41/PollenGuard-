@@ -3,10 +3,9 @@ class AdvancedAllergyForecastApp {
     // API Configuration
     this.config = {
       weatherApiKey: "bd78e54d0186477047d25911103391ab",
-      pollenApiKey: "",
       cacheExpiry: 60 * 1000, // 1 minute cache expiry
       apiTimeout: 2000, // 2 second timeout for API calls
-      backendUrl: "https://your-backend-api.com/forecast" // Replace with your actual backend URL
+      backendUrl: "https://your-backend-api.com/forecast" // Replace with actual backend URL
     };
     
     // App State
@@ -51,22 +50,53 @@ class AdvancedAllergyForecastApp {
   }
   
   // Initialize the application
-  init() {
-    // Show UI immediately with demo data
-    this.initializeUI();
-    this.setupEventListeners();
-    this.useDemoData();
-    this.showContent();
+  async init() {
+    try {
+      // Initialize UI immediately
+      this.initializeUI();
+      this.setupEventListeners();
+      
+      // Show loading state
+      this.showLoadingState('Loading your forecast...');
+      
+      // Load data in parallel
+      await Promise.all([
+        this.loadEssentialData(),
+        this.preloadAssets()
+      ]);
+      
+      // Show content once ready
+      this.showContent();
+      
+      // Signal readiness to parent if in iframe
+      if (window.self !== window.top) {
+        window.parent.postMessage('APP_READY', '*');
+      }
+    } catch (error) {
+      console.error('Initialization error:', error);
+      this.showError('Error initializing app. Using demo data.');
+      this.useDemoData();
+    } finally {
+      this.hideLoadingState();
+    }
+  }
+  
+  // Preload assets for better performance
+  async preloadAssets() {
+    const assets = [
+      // Add paths to critical assets here
+      'images/loading-spinner.svg',
+      'images/logo.png'
+    ];
     
-    // Start loading real data
-    this.loadEssentialData()
-      .then(() => {
-        // Signal to parent window (if in iframe) that we're ready
-        if (window.self !== window.top) {
-          window.parent.postMessage('APP_READY', '*');
-        }
+    await Promise.all(assets.map(asset => 
+      new Promise((resolve) => {
+        const img = new Image();
+        img.src = asset;
+        img.onload = resolve;
+        img.onerror = resolve; // Continue even if some assets fail
       })
-      .catch(console.error);
+    ));
   }
   
   // Load essential data with optimized caching and parallel requests
@@ -75,66 +105,113 @@ class AdvancedAllergyForecastApp {
     this.isLoading = true;
     
     try {
-      this.showLoadingState('Loading forecast...');
+      // Show loading state with progress
+      this.showLoadingState('Loading your local forecast...');
       
-      // Get location - try cached first, then geolocation
-      const location = await this.getUserLocation();
-      
-      if (!location) {
-        this.showError('Unable to determine your location. Using demo data.');
-        this.useDemoData();
-        return;
-      }
-      
-      // Fetch all required data in parallel
-      const [weatherData, pollenData] = await Promise.all([
-        this.fetchWeatherData(location.latitude, location.longitude),
-        this.fetchPollenData(location.latitude, location.longitude)
+      // Get location with timeout
+      const location = await Promise.race([
+        this.getUserLocation(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Location timeout')), 5000)
+        )
       ]);
       
-      // Process and update UI with fresh data
+      if (!location) throw new Error('Location not available');
+      
+      // Fetch all data in parallel with timeout
+      const [weatherData, pollenData] = await Promise.race([
+        Promise.all([
+          this.fetchWeatherData(location.latitude, location.longitude),
+          this.fetchPollenData(location.latitude, location.longitude)
+        ]),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Data loading timeout')), 5000)
+        )
+      ]);
+      
+      // Process data and update UI
       this.processForecastData(weatherData, pollenData);
       this.updateUI();
       
+      return true;
+      
     } catch (error) {
-      console.error('Error loading data:', error);
-      this.showError('Error loading forecast. Using demo data.');
+      console.error('Error in loadEssentialData:', error);
+      this.showError('Error loading data. Using demo data.');
       this.useDemoData();
+      return false;
     } finally {
       this.isLoading = false;
       this.hideLoadingState();
     }
   }
   
-  // Get user location with caching
+  // Get user location with caching and fallback
   async getUserLocation() {
-    const cacheKey = 'user_location';
-    const cached = this.getCachedData(cacheKey);
+    const CACHE_KEY = 'user_location';
+    const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
     
-    if (cached) {
+    // Check cache first
+    const cached = this.getCachedData(CACHE_KEY);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       return cached;
     }
     
     try {
+      // Try HTML5 geolocation
       const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 5 * 60 * 1000 // 5 minutes
-        });
+        if (!navigator.geolocation) {
+          reject(new Error('Geolocation not supported'));
+          return;
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 3000,
+            maximumAge: 0 // Always get fresh location
+          }
+        );
       });
       
       const location = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
         timestamp: Date.now()
       };
       
-      this.cacheData(cacheKey, location, 30 * 60 * 1000); // Cache for 30 minutes
+      // Cache the location
+      this.cacheData(CACHE_KEY, location, CACHE_TTL);
       return location;
       
     } catch (error) {
-      console.warn('Geolocation error:', error);
+      console.warn('Geolocation failed:', error);
+      
+      // Fallback to IP-based location or default
+      try {
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        
+        if (data.latitude && data.longitude) {
+          const location = {
+            latitude: data.latitude,
+            longitude: data.longitude,
+            accuracy: 5000, // Less accurate
+            timestamp: Date.now(),
+            source: 'ip'
+          };
+          
+          this.cacheData(CACHE_KEY, location, 60 * 60 * 1000); // Cache for 1 hour
+          return location;
+        }
+      } catch (ipError) {
+        console.warn('IP-based location failed:', ipError);
+      }
+      
+      // Last resort: return null and let the caller handle it
       return null;
     }
   }
@@ -769,33 +846,85 @@ class AdvancedAllergyForecastApp {
     }
   }
   
-  // Cache management helpers
+  // Cache management with size limits and TTL
   getCachedData(key) {
     const item = this.cache.get(key);
     if (!item) return null;
     
+    // Check if expired
     if (Date.now() > item.expiry) {
       this.cache.delete(key);
       return null;
     }
     
+    // Update last accessed time for LRU
+    item.lastAccessed = Date.now();
     return item.data;
   }
   
   cacheData(key, data, ttl = this.config.cacheExpiry) {
+    // Enforce cache size limit (100 items)
+    if (this.cache.size >= 100) {
+      // Find least recently used item
+      let lruKey = null;
+      let oldestAccess = Date.now();
+      
+      for (const [k, v] of this.cache.entries()) {
+        if (v.lastAccessed < oldestAccess) {
+          oldestAccess = v.lastAccessed;
+          lruKey = k;
+        }
+      }
+      
+      if (lruKey) {
+        this.cache.delete(lruKey);
+      }
+    }
+    
+    // Add to cache
     this.cache.set(key, {
       data,
-      expiry: Date.now() + ttl
+      expiry: Date.now() + ttl,
+      lastAccessed: Date.now()
     });
   }
   
-  // Fetch weather data with optimized caching
+  // Fetch weather data with optimized caching and error handling
   async fetchWeatherData(lat, lon) {
-    const cacheKey = `weather_${lat}_${lon}`;
+    const CACHE_KEY = `weather_${lat}_${lon}`;
     
     // Check cache first
-    const cached = this.getCachedData(cacheKey);
-    if (cached) return cached;
+    const cached = this.getCachedData(CACHE_KEY);
+    if (cached) {
+      return cached;
+    }
+    
+    try {
+      // Show loading state
+      this.showLoadingState('Fetching weather data...');
+      
+      // Make API request with timeout
+      const response = await Promise.race([
+        fetch(`https://api.weatherapi.com/v1/forecast.json?key=${this.config.weatherApiKey}&q=${lat},${lon}&days=7&aqi=yes&alerts=yes`),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Weather API timeout')), this.config.apiTimeout))
+      ]);
+      
+      if (!response.ok) {
+        throw new Error(`Weather API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Cache the successful response
+      this.cacheData(CACHE_KEY, data);
+      
+      return data;
+      
+    } catch (error) {
+      console.error('Error fetching weather data:', error);
+      throw error; // Re-throw to be handled by the caller
+    }
+  }
         return cached.data;
       }
       
