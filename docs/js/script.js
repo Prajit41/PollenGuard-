@@ -60,25 +60,56 @@ class AdvancedAllergyForecastApp {
   
   // Load essential data that should be available right away
   async loadEssentialData() {
+    // Show loading state immediately
+    this.showLoadingState('Getting your location...');
+    
+    // Start loading location and weather data in parallel
+    const locationPromise = this.getCurrentPosition().catch(error => {
+      console.warn('Using default location due to error:', error);
+      // Default to a central location if geolocation fails
+      return {
+        coords: {
+          latitude: 51.5074,  // Default to London
+          longitude: -0.1278
+        }
+      };
+    });
+    
     try {
-      // First get the user's location
-      const position = await this.getCurrentPosition();
+      // Get location (either real or default)
+      const position = await locationPromise;
       this.currentLocation = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude
       };
       
-      // Then fetch basic weather data
-      await this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude);
+      // Show the UI with loading state
+      this.showContent();
+      this.showLoadingState('Loading weather data...');
       
-      // Update UI with the loaded data
-      this.updateUIWithData();
+      // Fetch weather data with a timeout
+      const weatherPromise = this.fetchWeatherData(
+        this.currentLocation.latitude, 
+        this.currentLocation.longitude
+      );
+      
+      // Wait for weather data but don't block UI
+      weatherPromise
+        .then(() => this.updateUIWithData())
+        .catch(error => {
+          console.error('Error updating UI with weather data:', error);
+          this.showError('Weather data might be outdated. Trying to refresh...');
+        });
+      
+      // Start loading other data in the background
+      this.loadAdditionalData();
       
     } catch (error) {
-      console.error('Error loading essential data:', error);
-      // If there's an error, show the tab structure but with a message
+      console.error('Error in loadEssentialData:', error);
+      // Even if there's an error, show the UI with demo data
       this.showContent();
-      this.showError('Failed to load essential data. Please try refreshing the page or check your connection.');
+      this.showError('Using demo data. Some features may be limited.');
+      this.useDemoData();
     }
   }
   
@@ -291,6 +322,9 @@ class AdvancedAllergyForecastApp {
         `;
       }
       
+      // Load additional data in the background
+      this.loadAdditionalData();
+      
       // Load initial data
       await Promise.all([
         this.fetchWeatherData(this.currentLocation.latitude, this.currentLocation.longitude),
@@ -468,33 +502,87 @@ class AdvancedAllergyForecastApp {
     });
   }
   
-  // Fetch weather data
-  async fetchWeatherData(lat, lon) {
+  // Helper function to fetch with timeout
+  async fetchWithTimeout(resource, options = {}) {
+    const { timeout = 5000 } = options;
+    
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
     try {
-      const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${this.weatherApiKey}&units=metric`
-      );
+      const response = await fetch(resource, {
+        ...options,
+        signal: controller.signal  
+      });
+      clearTimeout(id);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch weather data');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data = await response.json();
+      return await response.json();
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out');
+      }
+      throw error;
+    }
+  }
+  
+  // Fetch weather data with timeout and caching
+  async fetchWeatherData(lat, lon) {
+    const cacheKey = `weather_${lat}_${lon}`;
+    const cacheExpiry = 5 * 60 * 1000; // 5 minutes cache
+    
+    // Check cache first
+    const cached = this.getFromCache(cacheKey, cacheExpiry);
+    if (cached) {
+      this.currentWeatherData = cached.data;
+      return cached.data;
+    }
+    
+    try {
+      const data = await this.fetchWithTimeout(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${this.weatherApiKey}&units=metric`,
+        { timeout: 3000 } // 3 second timeout
+      );
       
-      this.currentWeatherData = {
+      const weatherData = {
         temperature: `${Math.round(data.main.temp)}°C`,
         humidity: `${data.main.humidity}%`,
         windSpeed: `${(data.wind.speed * 3.6).toFixed(1)} km/h`,
-        condition: data.weather[0].main,
-        city: data.name,
-        country: data.sys.country
+        condition: data.weather[0]?.main || 'Unknown',
+        city: data.name || 'Unknown Location',
+        country: data.sys?.country || ''
       };
       
-      return this.currentWeatherData;
+      // Cache the result
+      this.saveToCache(cacheKey, weatherData);
+      this.currentWeatherData = weatherData;
+      
+      return weatherData;
+      
     } catch (error) {
-      console.error('Error fetching weather data:', error);
-      throw error;
+      console.warn('Weather data fetch failed, using fallback data', error);
+      // Return fallback data if available
+      if (this.currentWeatherData) {
+        return this.currentWeatherData;
+      }
+      // Or use demo data as last resort
+      return this.getDemoWeatherData();
     }
+  }
+  
+  // Get demo weather data as fallback
+  getDemoWeatherData() {
+    return {
+      temperature: '24°C',
+      humidity: '65%',
+      windSpeed: '12.5 km/h',
+      condition: 'Clouds',
+      city: 'Demo City',
+      country: 'Demo Country'
+    };
   }
   
   // Fetch pollen data
