@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const timerElement = document.getElementById('timer');
     const skipButton = document.getElementById('skipButton');
     const loadingContainer = document.querySelector('.loading-container');
-    let countdown = 15; // seconds
+    let countdown = 5; // Reduced from 15 to 5 seconds
     let countdownInterval;
 
     // Start the countdown
@@ -45,22 +45,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // Start the countdown when the page loads
     startCountdown();
 
-    // Preload the main app in the background
-    const link = document.createElement('link');
-    link.rel = 'prefetch';
-    link.href = 'index.html';
-    document.head.appendChild(link);
+    // Preload critical resources immediately
+    const resources = [
+      { href: 'index.html', as: 'document' },
+      { href: 'css/style.css', as: 'style' },
+      { href: 'js/script.js', as: 'script' },
+      { href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap', as: 'style' },
+      { href: 'https://fonts.gstatic.com', rel: 'preconnect', crossOrigin: true },
+      { href: 'https://api.openweathermap.org', rel: 'preconnect' }
+    ];
 
-    // Preload CSS and JS for the main app
-    const preloadCSS = document.createElement('link');
-    preloadCSS.rel = 'preload';
-    preloadCSS.href = 'css/style.css';
-    preloadCSS.as = 'style';
-    document.head.appendChild(preloadCSS);
+    resources.forEach(resource => {
+      const link = document.createElement('link');
+      if (resource.rel) link.rel = resource.rel;
+      if (resource.as) link.as = resource.as;
+      if (resource.crossOrigin) link.crossOrigin = resource.crossOrigin;
+      link.href = resource.href;
+      document.head.appendChild(link);
+    });
 
-    const preloadJS = document.createElement('link');
-    preloadJS.rel = 'preload';
-    preloadJS.href = 'js/script.js';
-    preloadJS.as = 'script';
-    document.head.appendChild(preloadJS);
+    // Start loading the main app immediately
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', 'index.html', true);
+    xhr.send();
 });

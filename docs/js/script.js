@@ -14,6 +14,7 @@ class AdvancedAllergyForecastApp {
     this.alerts = [];
     this.cache = new Map();
     this.CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes cache expiry
+    this.isDemoMode = true; // Always start in demo mode for instant display
 
     // Chart colors
     this.chartColors = {
@@ -39,14 +40,19 @@ class AdvancedAllergyForecastApp {
       ]
     };
 
-    // Initialize with demo data first for immediate display
+      // Show UI immediately with demo data
+    this.initializeUI();
+    this.setupEventListeners();
     this.useDemoData();
+    this.showContent();
     
-    // Then try to load real data
-    this.init();
+    // Start loading real data in background
+    setTimeout(() => {
+      this.loadEssentialData().catch(console.error);
+    }, 0);
   }
   
-  // Demo mode flag - set to true to use demo data
+  // Demo mode flag - controls whether to use demo data as fallback
   isDemoMode = true;
   
   // Initialize the application
@@ -524,6 +530,15 @@ class AdvancedAllergyForecastApp {
   async fetchWeatherData(lat, lon, useCache = true) {
     const cacheKey = `weather_${lat}_${lon}`;
     const cacheExpiry = 30 * 60 * 1000; // 30 minutes cache
+    
+    // Return cached data immediately if available and fresh
+    if (useCache) {
+      const cached = this.getFromCache(cacheKey, cacheExpiry);
+      if (cached) {
+        this.currentWeatherData = cached.data;
+        return cached.data;
+      }
+    }
     
     // Return cached data immediately if available and fresh
     if (useCache) {
