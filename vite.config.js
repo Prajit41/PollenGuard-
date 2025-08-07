@@ -2,22 +2,21 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
 export default defineConfig({
-  root: 'docs', // Serve from the docs directory
-  base: '/', // Changed from '/smart-allergy-forecast-app/'
+  root: '.',
   publicDir: 'public',
   build: {
-    outDir: '../dist', // Output to dist directory at root
+    outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'docs/index.html'),
+        main: resolve(__dirname, 'index.html'),
       },
     },
   },
   server: {
     port: 5173,
     open: true,
-    host: true, // Allow connections from local network
+    host: true,
   },
   preview: {
     port: 4173,

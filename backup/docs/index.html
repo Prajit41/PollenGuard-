@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="0;url=landing.html">
+    <title>Smart Allergy Forecast App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🌿 Smart Allergy Forecast</h1>
+            <div id="content" class="content">
+                <div class="location">
+                    <h2 id="city-name">📍 Loading...</h2>
+                </div>
+                
+                <!-- Current Conditions -->
+                <div class="current-conditions section-card">
+                    <h3 class="section-title">🌤️ Current Conditions</h3>
+                    <div class="current-grid">
+                        <div class="current-item">
+                            <div class="current-label">Temperature</div>
+                            <div id="temperature" class="current-value">--°C</div>
+                        </div>
+                        <div class="current-item">
+                            <div class="current-label">Humidity</div>
+                            <div id="humidity" class="current-value">--%</div>
+                        </div>
+                        <div class="current-item">
+                            <div class="current-label">Wind Speed</div>
+                            <div id="wind-speed" class="current-value">-- m/s</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Pollen Levels -->
+                <div class="pollen-info section-card">
+                    <h3 class="section-title">🌾 Today's Pollen Levels</h3>
+                    <div class="pollen-grid">
+                        <div class="pollen-item">
+                            <div class="pollen-type">🌳 Tree</div>
+                            <div id="tree-pollen" class="pollen-level">--</div>
+                        </div>
+                        <div class="pollen-item">
+                            <div class="pollen-type">🌱 Grass</div>
+                            <div id="grass-pollen" class="pollen-level">--</div>
+                        </div>
+                        <div class="pollen-item">
+                            <div class="pollen-type">🌿 Weed</div>
+                            <div id="weed-pollen" class="pollen-level">--</div>
+                        </div>
+                    </div>
+                    <div class="overall-pollen">
+                        <span class="label">📊 Overall Pollen Index:</span>
+                        <span id="overall-pollen" class="pollen-index">--</span>
+                    </div>
+                </div>
+
+                <!-- Alerts & Health Tips -->
+                <div class="alerts-section section-card">
+                    <h3 class="section-title">⚠️ Alerts & Health Tips</h3>
+                    <div id="alerts-container" class="alerts-container">
+                        <div class="loading-small">
+                            <div class="spinner-small"></div>
+                            <p>Loading alerts and health tips...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="medication-reminder">
+                        <h4>💊 Medication Reminder</h4>
+                        <div id="medication-reminder-text" class="reminder-text">
+                            No active medication reminders. <a href="#" id="set-reminder">Set a reminder</a>
+                        </div>
+                        <div id="reminder-form" class="reminder-form hidden">
+                            <input type="time" id="reminder-time" class="time-input">
+                            <button id="save-reminder" class="btn btn-primary">Save</button>
+                            <button id="cancel-reminder" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7-Day Forecast -->
+                <div class="forecast-section section-card">
+                    <h3 class="section-title">📈 7-Day Pollen Forecast & Trends</h3>
+                    
+                    <!-- Trend Summary -->
+                    <div class="trend-summary">
+                        <div id="trend-indicator" class="trend-indicator">
+                            <span class="trend-icon">📊</span>
+                            <span id="trend-text">Analyzing trends...</span>
+                        </div>
+                        <div id="peak-day" class="peak-day">
+                            <span class="peak-icon">⚠️</span>
+                            <span id="peak-text">Calculating peak day...</span>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Chart -->
+                    <div class="chart-container">
+                        <canvas id="pollen-chart" width="500" height="250"></canvas>
+                        <div class="chart-legend">
+                            <div class="legend-item">
+                                <span class="legend-color tree-color"></span>
+                                <span>Tree Pollen</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-color grass-color"></span>
+                                <span>Grass Pollen</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-color weed-color"></span>
+                                <span>Weed Pollen</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Daily Forecast Cards -->
+                    <div class="daily-forecast">
+                        <div id="forecast-cards" class="forecast-cards">
+                            <!-- Dynamic forecast cards will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI-Generated Summary -->
+                <div class="ai-summary-section section-card">
+                    <h3 class="section-title">🤖 AI Allergy Insights</h3>
+                    <div id="ai-summary-loading" class="loading-small">
+                        <div class="spinner-small"></div>
+                        <p>Generating personalized insights...</p>
+                    </div>
+                    <p id="ai-summary-text" class="ai-summary-text hidden"></p>
+                    <div id="ai-summary-error" class="error-small hidden">
+                        <p>Failed to get AI insights. Please try again later.</p>
+                    </div>
+                </div>
+
+                <!-- Share & Export Section -->
+                <div class="share-export-section section-card">
+                    <h3 class="section-title">📤 Share & Export</h3>
+                    <div class="share-buttons">
+                        <button id="download-csv-btn" class="share-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                            Download CSV
+                        </button>
+                        <button id="print-report-btn" class="share-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                            Print/PDF Report
+                        </button>
+                        <button id="email-report-btn" class="share-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                            Email Report
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Enhanced Allergy Risk -->
+                <div class="allergy-risk section-card">
+                    <div id="risk-level" class="risk-badge">
+                        Calculating...
+                    </div>
+                    <div class="risk-factors">
+                        <div id="primary-trigger" class="primary-trigger"></div>
+                    </div>
+                    <p id="health-tip" class="health-tip">
+                        Analyzing comprehensive forecast data for personalized recommendations...
+                    </p>
+                </div>
+            </div>
+            
+            <div id="error" class="error hidden">
+                <h3>⚠️ Unable to fetch data</h3>
+                <p id="error-message">Please check your internet connection and try again.</p>
+                <button onclick="location.reload()" class="retry-btn">🔄 Retry</button>
+            </div>
+        </div>
+    </div>
+    <script src="js/script.js"></script>
+</body>
+</html>
