@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Guide to Pollen Allergies | PollenGuard</title>
-    <link rel="stylesheet" href="css/landing.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/PollenGuard-/assets/landing-CienDXRc.js"></script>
+  <link rel="stylesheet" crossorigin href="/PollenGuard-/assets/landing-DSehXCZH.css">
 </head>
 <body>
     <div class="ebook-container">
@@ -18,143 +19,94 @@
                 <h2>Your Personalized Forecast</h2>
                 <div id="forecastData" class="forecast-data">
                     <div class="loading-indicator">
-                        <div class="loading-progress">
-                            <div class="loading-progress-bar" id="progressBar"></div>
+                        <div class="spinner"></div>
+                        <p id="loadingText">Loading your forecast...</p>
+                        <div id="loadingProgress" class="loading-bar">
+                            <div class="progress"></div>
                         </div>
-                        <div class="loading-steps" id="loadingSteps">
-                            <div class="loading-step" id="step1">
-                                <span class="step-icon">⏳</span>
-                                <span class="step-text">Initializing forecast...</span>
-                            </div>
-                            <div class="loading-step" id="step2">
-                                <span class="step-icon">📍</span>
-                                <span class="step-text">Detecting your location</span>
-                            </div>
-                            <div class="loading-step" id="step3">
-                                <span class="step-icon">🌤️</span>
-                                <span class="step-text">Fetching weather data</span>
-                            </div>
-                            <div class="loading-step" id="step4">
-                                <span class="step-icon">📊</span>
-                                <span class="step-text">Analyzing pollen levels</span>
-                            </div>
-                        </div>
-                        <div class="loading-time" id="loadingTime">Estimated time remaining: <span id="timeRemaining">10</span>s</div>
+                        <p id="timeRemaining" class="loading-time">Estimated time remaining: <span>30</span> seconds</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Forecast Toggle Button -->
-        <button id="forecastToggle" class="forecast-toggle">
-            <span>Personalized Forecast</span>
-            <span class="toggle-icon">▼</span>
-        </button>
-
-        <!-- Page 1: Cover -->
-        <section class="ebook-page active" data-page="1">
+        <!-- Ebook Content -->
+        <section class="ebook-page active" data-page="0">
             <div class="page-content">
                 <h1>Understanding Pollen Allergies</h1>
-                <p class="subtitle">Your Comprehensive Guide to Managing Seasonal Allergies</p>
-                <div class="cover-image">🌼</div>
-                <p class="author">Brought to you by <strong>PollenGuard</strong></p>
-                <p class="scroll-hint">Scroll or click Next to continue</p>
+                <p>Welcome to your comprehensive guide to understanding and managing pollen allergies.</p>
             </div>
         </section>
 
-        <!-- Page 2: What are Pollen Allergies -->
+        <section class="ebook-page" data-page="1">
+            <div class="page-content">
+                <h2>What Causes Pollen Allergies?</h2>
+                <p>Pollen allergies occur when your immune system mistakenly identifies pollen as a harmful substance.</p>
+            </div>
+        </section>
+
         <section class="ebook-page" data-page="2">
             <div class="page-content">
-                <h2>What Are Pollen Allergies?</h2>
-                <p>Pollen allergies, also known as hay fever or allergic rhinitis, occur when your immune system overreacts to pollen particles in the air.</p>
-                
-                <div class="info-box">
-                    <h3>Key Facts:</h3>
-                    <ul>
-                        <li>Affects 30% of adults and 40% of children</li>
-                        <li>Most common in spring, summer, and fall</li>
-                        <li>Symptoms include sneezing, runny nose, and itchy eyes</li>
-                    </ul>
+                <h2>Common Symptoms</h2>
+                <div class="symptoms-grid">
+                    <div class="symptom-card">
+                        <span class="emoji">🤧</span>
+                        <h3>Sneezing</h3>
+                    </div>
+                    <div class="symptom-card">
+                        <span class="emoji">👃</span>
+                        <h3>Runny Nose</h3>
+                    </div>
+                    <div class="symptom-card">
+                        <span class="emoji">👁️</span>
+                        <h3>Itchy Eyes</h3>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- Page 3: Pollen Types -->
         <section class="ebook-page" data-page="3">
             <div class="page-content">
-                <h2>Common Pollen Types</h2>
+                <h2>Pollen Types</h2>
                 <div class="pollen-types">
                     <div class="pollen-type">
-                        <div class="pollen-icon">🌳</div>
-                        <h3>Trees</h3>
-                        <p>Oak, birch, cedar, and maple trees release pollen in early spring.</p>
+                        <h3>🌳 Tree Pollen</h3>
+                        <p>Common in spring</p>
                     </div>
                     <div class="pollen-type">
-                        <div class="pollen-icon">🌾</div>
-                        <h3>Grasses</h3>
-                        <p>Common in late spring and summer, including ryegrass and timothy grass.</p>
+                        <h3>🌾 Grass Pollen</h3>
+                        <p>Common in late spring and summer</p>
                     </div>
                     <div class="pollen-type">
-                        <div class="pollen-icon">🌿</div>
-                        <h3>Weeds</h3>
-                        <p>Ragweed is the most common, peaking in late summer and fall.</p>
+                        <h3>🌼 Weed Pollen</h3>
+                        <p>Common in fall</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Page 4: Prevention Tips -->
         <section class="ebook-page" data-page="4">
             <div class="page-content">
                 <h2>Prevention Strategies</h2>
                 <div class="tip-card">
                     <h3>🌡️ Monitor Pollen Counts</h3>
-                    <p>Check daily forecasts and stay indoors when counts are high.</p>
+                    <p>Check daily pollen forecasts and stay indoors when counts are high.</p>
                 </div>
                 <div class="tip-card">
-                    <h3>🛌 Nighttime Routine</h3>
-                    <p>Shower before bed to remove pollen from hair and skin.</p>
+                    <h3>🕶️ Wear Sunglasses</h3>
+                    <p>Protect your eyes from pollen when outdoors.</p>
                 </div>
                 <div class="tip-card">
-                    <h3>🏡 Home Environment</h3>
-                    <p>Keep windows closed and use HEPA filters in your home.</p>
+                    <h3>🚪 Keep Windows Closed</h3>
+                    <p>Use air conditioning instead of opening windows during high pollen seasons.</p>
                 </div>
             </div>
         </section>
 
-        <!-- Page 5: Ready to Start -->
-        <section class="ebook-page" data-page="5">
-            <div class="page-content ready-page">
-                <h2>Ready to Take Control?</h2>
-                <p>PollenGuard helps you track pollen levels and manage your allergies effectively.</p>
-                
-                <div class="loading-container">
-                    <div class="spinner"></div>
-                    <p>Preparing your personalized forecast...</p>
-                    <div id="skipButtonContainer" style="opacity: 0; transition: opacity 0.5s ease;">
-                        <button id="skipButton" class="primary-btn">Enter PollenGuard</button>
-                        <p class="hint">Your data is ready!</p>
-                    </div>
-                </div>
-                
-                <div class="app-features">
-                    <div class="feature">
-                        <span>🌤️</span>
-                        <p>Real-time pollen forecasts</p>
-                    </div>
-                    <div class="feature">
-                        <span>📍</span>
-                        <p>Personalized for your location</p>
-                    </div>
-                    <div class="feature">
-                        <span>🔔</span>
-                        <p>Custom alerts and reminders</p>
-                    </div>
-                </div>
-            </div>
-        </section>
+        <div class="forecast-button-container">
+            <button id="forecastToggle" class="bubble-btn">Get Personalized Forecast</button>
+        </div>
     </div>
     
-    <script src="js/landing.js"></script>
 </body>
 </html>
