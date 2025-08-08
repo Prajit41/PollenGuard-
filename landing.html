@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Guide to Pollen Allergies | PollenGuard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/PollenGuard-/assets/landing-CienDXRc.js"></script>
+  <link rel="stylesheet" crossorigin href="/PollenGuard-/assets/landing-DSehXCZH.css">
+</head>
+<body>
+    <div class="ebook-container">
+        <!-- Modal for Personalized Forecast -->
+        <div id="forecastModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Your Personalized Forecast</h2>
+                <div id="forecastData" class="forecast-data">
+                    <div class="loading-indicator">
+                        <div class="spinner"></div>
+                        <p id="loadingText">Loading your forecast...</p>
+                        <div id="loadingProgress" class="loading-bar">
+                            <div class="progress"></div>
+                        </div>
+                        <p id="timeRemaining" class="loading-time">Estimated time remaining: <span>30</span> seconds</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ebook Content -->
+        <section class="ebook-page active" data-page="0">
+            <div class="page-content">
+                <h1>Understanding Pollen Allergies</h1>
+                <p>Welcome to your comprehensive guide to understanding and managing pollen allergies.</p>
+            </div>
+        </section>
+
+        <section class="ebook-page" data-page="1">
+            <div class="page-content">
+                <h2>What Causes Pollen Allergies?</h2>
+                <p>Pollen allergies occur when your immune system mistakenly identifies pollen as a harmful substance.</p>
+            </div>
+        </section>
+
+        <section class="ebook-page" data-page="2">
+            <div class="page-content">
+                <h2>Common Symptoms</h2>
+                <div class="symptoms-grid">
+                    <div class="symptom-card">
+                        <span class="emoji">🤧</span>
+                        <h3>Sneezing</h3>
+                    </div>
+                    <div class="symptom-card">
+                        <span class="emoji">👃</span>
+                        <h3>Runny Nose</h3>
+                    </div>
+                    <div class="symptom-card">
+                        <span class="emoji">👁️</span>
+                        <h3>Itchy Eyes</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="ebook-page" data-page="3">
+            <div class="page-content">
+                <h2>Pollen Types</h2>
+                <div class="pollen-types">
+                    <div class="pollen-type">
+                        <h3>🌳 Tree Pollen</h3>
+                        <p>Common in spring</p>
+                    </div>
+                    <div class="pollen-type">
+                        <h3>🌾 Grass Pollen</h3>
+                        <p>Common in late spring and summer</p>
+                    </div>
+                    <div class="pollen-type">
+                        <h3>🌼 Weed Pollen</h3>
+                        <p>Common in fall</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="ebook-page" data-page="4">
+            <div class="page-content">
+                <h2>Prevention Strategies</h2>
+                <div class="tip-card">
+                    <h3>🌡️ Monitor Pollen Counts</h3>
+                    <p>Check daily pollen forecasts and stay indoors when counts are high.</p>
+                </div>
+                <div class="tip-card">
+                    <h3>🕶️ Wear Sunglasses</h3>
+                    <p>Protect your eyes from pollen when outdoors.</p>
+                </div>
+                <div class="tip-card">
+                    <h3>🚪 Keep Windows Closed</h3>
+                    <p>Use air conditioning instead of opening windows during high pollen seasons.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="forecast-button-container">
+            <button id="forecastToggle" class="bubble-btn">Get Personalized Forecast</button>
+        </div>
+    </div>
+    
+</body>
+</html>
