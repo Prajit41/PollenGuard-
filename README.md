@@ -8,7 +8,6 @@ PollenGuard is a modern web application that provides personalized pollen foreca
 - 📱 Responsive design for all devices
 - 🌤️ Real-time weather and pollen data
 - 📊 Detailed pollen level breakdown
-- 📍 Manual location input
 - 📱 PWA support (coming soon)
 
 ## Prerequisites
@@ -54,30 +53,6 @@ PollenGuard is a modern web application that provides personalized pollen foreca
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
-
-## Project Structure
-
-```
-pollen-guard/
-├── public/              # Static files
-├── src/
-│   ├── components/      # Reusable components
-│   ├── context/         # React context providers
-│   ├── hooks/           # Custom React hooks
-│   ├── pages/           # Page components
-│   ├── services/        # API services
-│   ├── styles/          # Global styles
-│   ├── types/           # TypeScript type definitions
-│   ├── utils/           # Utility functions
-│   ├── App.tsx          # Main App component
-│   └── main.tsx         # Entry point
-├── .env                # Environment variables
-├── .gitignore
-├── index.html
-├── package.json
-├── tsconfig.json
-└── vite.config.ts
-```
 
 ## Technologies Used
 
